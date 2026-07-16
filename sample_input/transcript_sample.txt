@@ -1,0 +1,43 @@
+[Sample internal talk transcript: "Why Agents Break Old IAM Models"]
+
+So the way access control has worked for the last twenty years assumes
+a human is on the other end of the request. Someone logs in, gets a
+session, and everything downstream is scoped to that session. That
+model holds up fine as long as the thing making requests is a person
+sitting at a keyboard.
+
+It falls apart with agents. An AI agent doesn't have a fixed schedule,
+it doesn't log in once a day, and it doesn't stop making requests when
+it's "done" because it doesn't know when it's done until it's tried
+five different tools and three different data sources to answer one
+question. A single agent task can fan out into dozens of calls to
+internal APIs, SaaS tools, and other agents, each of which needs its
+own identity and its own scoped permissions, in the span of a few
+seconds.
+
+The instinct a lot of teams have right now is to just give the agent a
+long-lived API key or service account and move on. That's the same
+shortcut people took with early CI/CD pipelines, and it caused the
+same problem: a credential that never expires, gets copied into three
+different config files, and eventually shows up in a leaked repo two
+years later. The difference with agents is the blast radius: a leaked
+service account for a build pipeline can touch a deploy target, but a
+leaked credential for an agent with broad tool access can touch
+whatever that agent was allowed to touch, which teams often don't
+fully audit until something goes wrong.
+
+What actually holds up is treating the agent like any other workload:
+short-lived credentials issued per-task, scoped to exactly what that
+task needs, tied to a verifiable identity rather than a static secret.
+Standards like SPIFFE already solved most of this for service-to-service
+auth. The open problem is extending that same discipline to
+agent-to-tool and agent-to-agent calls, where the number of distinct
+"identities" in play is an order of magnitude higher than in a
+traditional microservices environment, and where policy has to be
+expressed in terms an agent's orchestration layer can actually enforce
+at request time, not just at deploy time.
+
+That's the part most security teams haven't caught up to yet. They've
+solved human IAM. They've mostly solved service IAM. Non-human,
+agent-driven IAM is still being figured out in production, by whoever
+gets paged first.

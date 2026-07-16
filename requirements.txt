@@ -1,0 +1,6 @@
+crewai[litellm]>=1.0.0
+fastapi>=0.110
+uvicorn>=0.29
+python-dotenv>=1.0
+pydantic>=2.0
+youtube-transcript-api>=1.0.0
