@@ -109,18 +109,6 @@ response came back through to the Respond node -- all three nodes
 completed successfully in a single live execution, not just a workflow
 file that looks plausible on paper.
 
-## What I'd build next
-
-- A **research/competitive-intel agent** -- same shape as this one, but
-  the "source" step is a web-search tool call instead of a pasted
-  transcript, so it can watch a topic rather than process a document
-  someone hands it.
-- **Guardrails on the Writer agent** -- a review step (rule-based or a
-  third "editor" agent) that checks the draft against a style guide
-  before it's treated as done.
-- **Structured output** instead of markdown-in-a-string, so results
-  can be piped straight into a CMS API rather than pasted by hand.
-
 ## Notes
 
 - Sample input (`sample_input/transcript_sample.txt`) is original
