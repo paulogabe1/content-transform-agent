@@ -17,7 +17,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://localhost:8000/generate",
+        "url": "http://127.0.0.1:8000/generate",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { \"source_text\": $json.body.source_text } }}",

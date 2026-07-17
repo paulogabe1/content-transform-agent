@@ -98,6 +98,17 @@ triggered by a new file landing in a shared drive or CMS, rather than
 a manual webhook call -- n8n (or Zapier/Make) is the piece that
 watches for that trigger so nobody has to run the script by hand.
 
+### Proof it runs
+
+![n8n workflow executing successfully, all three nodes green](n8n/execution-screenshot.png)
+
+Imported into a real n8n instance, triggered via its test webhook, and
+run end to end: the webhook received a source document, the HTTP
+Request node called the FastAPI `/generate` endpoint above, and the
+response came back through to the Respond node -- all three nodes
+completed successfully in a single live execution, not just a workflow
+file that looks plausible on paper.
+
 ## What I'd build next
 
 - A **research/competitive-intel agent** -- same shape as this one, but
