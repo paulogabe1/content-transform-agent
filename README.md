@@ -100,7 +100,7 @@ watches for that trigger so nobody has to run the script by hand.
 
 ### Proof it runs
 
-![n8n workflow executing successfully, all three nodes green](n8n/execution-screenshot.png)
+![n8n workflow executing successfully, all three nodes green](n8n/execution.gif)
 
 Imported into a real n8n instance, triggered via its test webhook, and
 run end to end: the webhook received a source document, the HTTP
