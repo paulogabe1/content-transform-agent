@@ -4,10 +4,11 @@ file OR a YouTube URL.
 
 Usage:
     python main.py sample_input/transcript_sample.txt
-    python main.py https://www.youtube.com/watch?v=VIDEO_ID
+    python main.py --verbose https://www.youtube.com/watch?v=VIDEO_ID
 
 Writes the result to output.md in the current directory.
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -21,6 +22,22 @@ def _looks_like_youtube_url(value: str) -> bool:
     return "youtube.com" in value or "youtu.be" in value
 
 
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the content transformation crew on a file or YouTube URL."
+    )
+    parser.add_argument("source", help="Path to a source text file, or a YouTube URL")
+    parser.add_argument(
+        "--verbose", dest="verbose", action="store_true", default=False,
+        help="Print agent/task progress as it runs",
+    )
+    parser.add_argument(
+        "--quiet", dest="verbose", action="store_false",
+        help="Suppress agent/task progress output (default)",
+    )
+    return parser.parse_args()
+
+
 def main():
     # Load parent .env if nested inside growth-intel-agent.
     # Load current .env as needed to override.
@@ -29,26 +46,22 @@ def main():
         load_dotenv(parent_dir / ".env")
     load_dotenv(override=True)
 
-    if len(sys.argv) != 2:
-        print("Usage: python main.py <path-to-source-text-file | youtube-url>")
-        sys.exit(1)
+    args = parse_args()
 
-    arg = sys.argv[1]
-
-    if _looks_like_youtube_url(arg):
+    if _looks_like_youtube_url(args.source):
         try:
-            source_text = get_transcript_from_youtube(arg)
+            source_text = get_transcript_from_youtube(args.source)
         except ValueError as e:
             print(f"Could not get a transcript: {e}")
             sys.exit(1)
     else:
-        source_path = Path(arg)
+        source_path = Path(args.source)
         if not source_path.exists():
             print(f"File not found: {source_path}")
             sys.exit(1)
         source_text = source_path.read_text(encoding="utf-8")
 
-    crew = build_crew(source_text)
+    crew = build_crew(source_text, verbose=args.verbose)
     result = crew.kickoff()
 
     section_titles = ["Analyst Brief", "Blog Draft", "Social Posts"]

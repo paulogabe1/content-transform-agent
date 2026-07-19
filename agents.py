@@ -46,7 +46,7 @@ def build_llm() -> LLM:
     return LLM(model=model, temperature=0.4, timeout=60, max_retries=5)
 
 
-def build_agents(llm: LLM):
+def build_agents(llm: LLM, verbose: bool = True):
     analyst = Agent(
         role="Technical Content Analyst",
         goal=(
@@ -61,7 +61,7 @@ def build_agents(llm: LLM):
             "and cutting everything that's filler."
         ),
         llm=llm,
-        verbose=True,
+        verbose=verbose,
         max_execution_time=90,  # fail loudly instead of hanging forever
     )
 
@@ -78,7 +78,7 @@ def build_agents(llm: LLM):
             "with 'In today's rapidly evolving landscape...'."
         ),
         llm=llm,
-        verbose=True,
+        verbose=verbose,
         max_execution_time=90,
     )
 
@@ -230,14 +230,14 @@ def condense_if_needed(source_text: str, llm: LLM) -> str:
     return "\n\n".join(condensed_parts)
 
 
-def build_crew(source_text: str) -> Crew:
+def build_crew(source_text: str, verbose: bool = True) -> Crew:
     llm = build_llm()
     source_text = condense_if_needed(source_text, llm)
-    analyst, writer = build_agents(llm)
+    analyst, writer = build_agents(llm, verbose=verbose)
     tasks = build_tasks(analyst, writer, source_text)
     return Crew(
         agents=[analyst, writer],
         tasks=tasks,
         process=Process.sequential,
-        verbose=True,
+        verbose=verbose,
     )

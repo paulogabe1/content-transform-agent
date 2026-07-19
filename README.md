@@ -99,6 +99,8 @@ python main.py https://www.youtube.com/watch?v=VIDEO_ID
 uvicorn api:app --reload   # http://localhost:8000
 ```
 
+Runs quietly by default. Add `--verbose` (before or after the file/URL) to print agent/task progress as it runs — doesn't apply to the API, which never prints crew progress either way.
+
 YouTube input uses `youtube-transcript-api` to pull the caption track (no API key; unofficial; only works if the video has captions).
 
 ## Outputs
