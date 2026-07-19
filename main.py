@@ -22,7 +22,12 @@ def _looks_like_youtube_url(value: str) -> bool:
 
 
 def main():
-    load_dotenv()
+    # Load parent .env if nested inside growth-intel-agent.
+    # Load current .env as needed to override.
+    parent_dir = Path(__file__).parent.parent
+    if (parent_dir / "bridge.py").exists():
+        load_dotenv(parent_dir / ".env")
+    load_dotenv(override=True)
 
     if len(sys.argv) != 2:
         print("Usage: python main.py <path-to-source-text-file | youtube-url>")
@@ -46,10 +51,6 @@ def main():
     crew = build_crew(source_text)
     result = crew.kickoff()
 
-    # crew.kickoff() runs all three tasks, but str(result) only returns
-    # the LAST task's raw output (CrewOutput.__str__ just returns
-    # self.raw). Build the full document from result.tasks_output so the
-    # analyst's brief and blog draft aren't silently dropped.
     section_titles = ["Analyst Brief", "Blog Draft", "Social Posts"]
     sections = [
         f"## {title}\n\n{task_output.raw}"

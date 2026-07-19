@@ -1,11 +1,11 @@
 """
-FastAPI wrapper around the content crew. Serves a small frontend at /
-for interactive use, and exposes /generate as a plain HTTP POST so
-no-code automation tools (n8n, Zapier, Make) can trigger it too - this
-is the piece an n8n "HTTP Request" node calls in n8n/workflow.json.
+FastAPI wrapper around the content crew. 
+1. Serves a basic frontend for interactive use, and 
+2. exposes /generate as a plain HTTP POST so no-code automation tools 
+    (n8n, Zapier, Make) can trigger it too. 
+This is the piece an n8n "HTTP Request" node calls in n8n/workflow.json.
 
-/generate accepts either pasted text or a YouTube URL - exactly one of
-the two, not both, not neither.
+/generate accepts either pasted text OR a YouTube URL. Not both, not neither.
 
 Run locally:
     uvicorn api:app --reload
@@ -21,7 +21,12 @@ from dotenv import load_dotenv
 from agents import build_crew
 from youtube_source import get_transcript_from_youtube
 
-load_dotenv()
+# Load parent .env if nested inside growth-intel-agent.
+# Load current .env as needed to override.
+parent_dir = Path(__file__).parent.parent
+if (parent_dir / "bridge.py").exists():
+    load_dotenv(parent_dir / ".env")
+load_dotenv(override=True)
 app = FastAPI(title="Content Transformation Agent")
 
 FRONTEND_PATH = Path(__file__).parent / "frontend" / "index.html"
@@ -62,8 +67,7 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         try:
             source_text = get_transcript_from_youtube(req.youtube_url)
         except ValueError as e:
-            # get_transcript_from_youtube raises ValueError with a
-            # message that's already written for a human to read.
+            # ValueError passed from get_transcript_from_youtube
             raise HTTPException(status_code=400, detail=str(e))
     elif req.source_text:
         source_text = req.source_text
@@ -76,8 +80,6 @@ def generate(req: GenerateRequest) -> GenerateResponse:
     crew = build_crew(source_text)
     result = crew.kickoff()
 
-    # See main.py for why we read result.tasks_output instead of
-    # str(result) - the latter silently drops everything but the last task.
     analyst_brief, blog_draft, social_posts = (t.raw for t in result.tasks_output)
     combined = "\n\n---\n\n".join(
         [

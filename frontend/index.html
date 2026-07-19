@@ -65,7 +65,7 @@
     line-height: 1.5;
   }
 
-  /* --- Pipeline strip: the signature element --- */
+  /* Pipeline strip: the signature element */
   .pipeline {
     display: flex;
     align-items: center;
@@ -130,8 +130,8 @@
     50% { box-shadow: 0 0 0 7px rgba(217, 164, 65, 0.05); }
   }
 
-  /* --- Input --- */
-  /* --- Mode toggle --- */
+  /* Input */
+  /* Mode toggle */
   .mode-toggle {
     display: flex;
     gap: 6px;
@@ -240,7 +240,7 @@
     min-height: 16px;
   }
 
-  /* --- Output --- */
+  /* Output */
   .output { margin-top: 32px; display: none; }
   .output.visible { display: block; }
 
@@ -392,8 +392,8 @@
     stages.forEach(s => setStageState(s, null));
   }
 
-  // We don't get real per-stage progress from the API in one request -
-  // this cycles through stage names as a sense of where things likely
+  // There's no real per-stage progress from the API in one request.
+  // This cycles through stage names as a sense of where things likely
   // are, not a literal live status. See README for why.
   function startProgressSimulation() {
     let i = 0;
