@@ -1,132 +1,123 @@
 # Content Transformation Agent
 
-A small multi-agent pipeline that turns raw technical material (docs,
-whitepapers, call/video transcripts) into a blog draft and a set of
-social posts, using two LLM-backed agents in sequence rather than one
-prompt trying to do everything at once.
+Turns raw technical material (docs, transcripts, YouTube videos) into a blog draft and social posts, using two LLM agents in sequence (CrewAI + Groq's Llama 3.3 70B): a Content Analyst extracts the core insight, then a Technical Writer drafts the blog and social posts. Splitting "what's interesting" from "write it well" beats one prompt trying to do both.
 
-I built this as a portfolio piece to explore agent frameworks and
-LLM-driven content workflows. Small enough to read end to end in five
-minutes, real enough to actually run.
+## Setup
 
-## Architecture
+### 1. Check your Python version
 
-```
-source text (doc / transcript)
-        |
-        v
-+---------------------+      +-----------------------+
-|  Content Analyst     | ---> |   Technical Writer     |
-|  (extracts the       |      |  (drafts blog, then    |
-|   one real insight)  |      |   social posts)        |
-+---------------------+      +-----------------------+
-        |                             |
-        +-------------+---------------+
-                       |
-                       v
-               output.md (or JSON via API)
+CrewAI requires a specific version range and fails silently outside it — it installs a stale, broken version instead of erroring. Check the current requirement and your own version before creating a venv:
+
+**bash**
+```bash
+curl -s https://pypi.org/pypi/crewai/json | python3 -c "import json,sys; print(json.load(sys.stdin)['info']['requires_python'])"
+python3 --version
 ```
 
-Two agents, three sequential tasks, built with [CrewAI](https://docs.crewai.com)
-calling Groq's free tier (Llama 3.3 70B). I added the Analyst pass
-because skipping straight from raw transcript to blog post tends to
-produce generic marketing copy. Separating "figure out what's
-actually interesting" from "write it well" gets noticeably better
-output for not much extra cost.
+**PowerShell**
+```powershell
+(Invoke-RestMethod https://pypi.org/pypi/crewai/json).info.requires_python
+python --version
+```
 
-## Why CrewAI
+### 2. If your Python isn't in range
 
-I chose CrewAI over a bare LangChain chain because the job is
-naturally role-based (an analyst and a writer genuinely do different
-things), and CrewAI's `Agent`/`Task`/`Crew` primitives map onto that
-directly without extra scaffolding. For a single-shot pipeline like
-this one, LangGraph would be overkill. No branching state machine
-needed here.
+Two options:
 
-## Running it
+1. **Install a matching version directly** (e.g. 3.12) from [python.org](https://www.python.org/downloads/), then point the venv at it explicitly in step 3.
+
+   OR
+
+2. **Use [uv](https://astral.sh/uv/)** to install an isolated Python version without touching your system install:
+
+    **bash**
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv python install 3.12
+    ```
+
+    **PowerShell**
+    ```powershell
+    irm https://astral.sh/uv/install.ps1 | iex
+    uv python install 3.12
+    ```
+
+### 3. Create the venv and install dependencies
+
+Pick whichever path you took in step 2.
+
+**Standard venv (system Python, or a version installed directly)**
+
+bash (use `python3.12` instead of `python3` if you installed a second version (e.g. 3.12)):
+```bash
+python3.12 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+PowerShell (use `py -3.12` instead of `python` if you installed a second version (e.g. 3.12)):
+```powershell
+py -3.12 -m venv venv
+venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+OR
+
+**With uv**
+
+bash:
+```bash
+uv venv --python 3.12 venv
+source venv/bin/activate
+uv pip install -r requirements.txt
+```
+
+PowerShell:
+```powershell
+uv venv --python 3.12 venv
+venv\Scripts\Activate.ps1
+uv pip install -r requirements.txt
+```
+
+### 4. Configure environment variables
+
+Same command in bash and PowerShell:
+```bash
+cp .env.example .env
+```
+Fill in `GROQ_API_KEY` (free at [console.groq.com/keys](https://console.groq.com/keys)).
+
+### 5. Run it
 
 ```bash
-pip install -r requirements.txt
-cp .env.example .env   # add your GROQ_API_KEY (free at console.groq.com/keys)
-
-# CLI. Writes output.md, works on a file or a YouTube URL
+# CLI — takes a file or a YouTube URL, writes output.md
 python main.py sample_input/transcript_sample.txt
 python main.py https://www.youtube.com/watch?v=VIDEO_ID
 
-# or the frontend, one server, no separate client needed
-uvicorn api:app --reload
-# then open http://localhost:8000 in a browser
+# or the frontend (same server, no separate client)
+uvicorn api:app --reload   # http://localhost:8000
 ```
 
-The frontend (`frontend/index.html`) is served directly by `api.py` at
-`/`. I paste text (or click "Load sample transcript" to pull in
-`sample_input/transcript_sample.txt` via the `/sample` endpoint), hit
-Generate, and the three outputs land in tabs. Same origin as the API
-itself, so there's no CORS setup and no manual JSON to write by hand.
-The page just calls `/generate` directly. The pipeline strip at the
-top cycles through stage names while a request is in flight. It's a
-sense of where things likely are, not a literal live status, since a
-single `/generate` call doesn't report progress mid-run.
+YouTube input uses `youtube-transcript-api` to pull the caption track (no API key; unofficial; only works if the video has captions).
 
-## YouTube input
+## Outputs
 
-Both the CLI and `/generate` accept a YouTube URL instead of raw text.
-`youtube_source.py` pulls the video's caption track via
-`youtube-transcript-api` (no API key needed) and feeds that transcript
-into the same pipeline. Two things worth knowing:
-
-- It reads YouTube's public caption data directly, not an official
-  Google API. There isn't one for arbitrary public videos. This is an
-  established, widely-used approach, but it's unofficial, so it can
-  break if YouTube changes something internally.
-- It only works on videos that have captions at all (manual or
-  auto-generated). A video with captions disabled has no transcript to
-  extract, and the error message says so directly rather than failing
-  silently.
-
-For scripted/automated calls without the browser, `main.py` (CLI) or a
-plain `curl -X POST http://localhost:8000/generate -d '{"source_text":"..."}'`
-(or `{"youtube_url": "..."}`)
-both still work. The frontend is for interactive use, not a
-replacement for those.
+- **`output.md`** (CLI only, overwritten every run) — three sections: the Analyst's brief, the blog draft, and the social posts, each from one of the crew's tasks.
+- **API (`/generate`)** — no file is written; the same three pieces come back as JSON (`analyst_brief`, `blog_draft`, `social_posts`), plus `output`, the same three sections combined into one string like `output.md`.
 
 ## The no-code layer
 
-`n8n/workflow.json` is an importable n8n workflow: a webhook receives
-a source doc, calls the FastAPI `/generate` endpoint above, and
-returns the draft. The idea is that a real version of this would be
-triggered by a new file landing in a shared drive or CMS, rather than
-a manual webhook call. n8n (or Zapier/Make) is the piece that watches
-for that trigger so nobody has to run the script by hand.
-
-### Proof it runs
+`n8n/workflow.json` — a webhook triggers the FastAPI `/generate` endpoint above. Verified end to end in a live n8n instance:
 
 ![n8n workflow executing successfully, all three nodes green](n8n/execution-screenshot.png)
 
-I imported this into a real n8n instance, triggered it via its test
-webhook, and ran it end to end: the webhook received a source
-document, the HTTP Request node called the FastAPI `/generate`
-endpoint above, and the response came back through to the Respond
-node. All three nodes completed successfully in a single live
-execution, not just a workflow file that looks plausible on paper.
+## What's next
 
-## What I'd build next
-
-- A **research/competitive-intel agent**. Same shape as this one, but
-  the "source" step is a web-search tool call instead of a pasted
-  transcript, so it can watch a topic rather than process a document
-  someone hands it.
-- **Guardrails on the Writer agent**. A review step (rule-based or a
-  third "editor" agent) that checks the draft against a style guide
-  before it's treated as done.
-- **Structured output** instead of markdown-in-a-string, so results
-  can be piped straight into a CMS API rather than pasted by hand.
+- A research/competitive-intel agent feeding this one — built, see [growth-intel-agent](https://github.com/paulogabe1/growth-intel-agent)
+- Guardrails on the Writer agent (a style-guide review step)
+- Structured output instead of markdown-in-a-string
 
 ## Notes
 
-- Sample input (`sample_input/transcript_sample.txt`) is original
-  writing for this demo. A short explainer on why traditional IAM
-  breaks down for AI agents and non-human identities, picked because
-  it's a genuinely interesting problem in the identity/security
-  space, not because it was handed to me.
-- No API key is included anywhere in this repo. `.env` is gitignored.
+No API key is included anywhere in this repo. `.env` is gitignored.
