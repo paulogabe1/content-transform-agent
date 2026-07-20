@@ -39,8 +39,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main():
-    # Load parent .env if nested inside growth-intel-agent.
-    # Load current .env as needed to override.
+    # Load parent .env if nested inside growth-intel-agent, then this
+    # project's own on top.
     parent_dir = Path(__file__).parent.parent
     if (parent_dir / "bridge.py").exists():
         load_dotenv(parent_dir / ".env")

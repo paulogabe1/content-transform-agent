@@ -112,7 +112,7 @@ YouTube input uses `youtube-transcript-api` to pull the caption track (no API ke
 
 `n8n/workflow.json` — a webhook triggers the FastAPI `/generate` endpoint above. Verified end to end in a live n8n instance:
 
-![n8n workflow executing successfully, all three nodes green](n8n/execution-screenshot.png)
+![n8n workflow executing successfully, all three nodes green](n8n/execution.gif)
 
 ## What's next
 

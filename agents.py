@@ -1,15 +1,13 @@
 """
 Agent and task definitions for the content transformation crew.
 
-Two-agent, three-task pipeline:
-  1. Content Analyst  -> reads raw technical material and extracts the
-                          strongest, most specific insight worth writing about
-  2. Technical Writer  -> turns that analysis into a blog draft, then a set
-                          of social posts
+Two agents, three tasks: Content Analyst extracts the strongest
+insight from the source material, Technical Writer turns that into a
+blog draft and social posts.
 
 Built with a workload-identity / AI-agent-security audience in mind
-(see sample_input/), but the pipeline works on any technical source
-material: docs, whitepapers, webinar transcripts, changelogs.
+(see sample_input/), but works on any technical source: docs,
+whitepapers, transcripts, changelogs.
 """
 
 import os
@@ -17,14 +15,9 @@ import re
 import time
 from crewai import Agent, Task, Crew, Process, LLM
 
-# Workaround for a known CrewAI bug (GitHub issue #5886).
-# CrewAI injects an Anthropic-only prompt-caching marker into every
-# message regardless of provider. Groq (and other OpenAI-compatible
-# APIs) reject it outright, so every request fails with something
-# like: GroqException, property 'cache_breakpoint' is unsupported.
-# This patches CrewAI's marker function to a no-op. Safe to delete
-# once https://github.com/crewAIInc/crewAI/issues/5886 is fixed
-# upstream.
+# CrewAI bug (crewAIInc/crewAI#5886): injects an Anthropic-only cache
+# marker into every request, which Groq rejects outright. Patches it
+# to a no-op -- safe to remove once fixed upstream.
 import crewai.llms.cache as _crewai_cache
 
 _crewai_cache.mark_cache_breakpoint = lambda msg: msg
@@ -32,15 +25,11 @@ _crewai_cache.mark_cache_breakpoint = lambda msg: msg
 
 def build_llm() -> LLM:
     """
-    Model id is read from the environment so it's easy to swap
-    without touching code. Defaults to Groq's Llama 3.3 70B, which is
-    genuinely free (no card), and far less contention than a popular 
-    hosted model like Gemini Flash under high demand. 
-    Free key at https://console.groq.com/keys, and
-    current models and limits at https://console.groq.com/docs/models.
-
-    timeout and max_retries give a hard deadline per request instead
-    of letting a stalled or overloaded call hang indefinitely.
+    Model id comes from env so swapping it is a config change, not a
+    code change. Defaults to Groq's free Llama 3.3 70B (no card, less
+    contention than a popular hosted model). Free key at
+    console.groq.com/keys. timeout/max_retries keep a stalled call
+    from hanging forever.
     """
     model = os.getenv("GROQ_MODEL", "groq/llama-3.3-70b-versatile")
     return LLM(model=model, temperature=0.4, timeout=60, max_retries=5)
@@ -137,10 +126,8 @@ def build_tasks(analyst: Agent, writer: Agent, source_text: str):
     return [analyze, write_blog, write_social]
 
 
-# Handling transcripts too long for a single request.
-# These conservative numbers tuned for Groq's free tier (12,000
-# tokens/minute. On a higher-limit tier or a different model, raise these
-# in .env instead of editing code.
+# Keeps long transcripts under Groq's free-tier limit (12k tokens/min).
+# Raise these in .env if you're on a bigger tier.
 MAX_SAFE_CHARS = int(os.getenv("MAX_SAFE_CHARS", "12000"))  # ~3,000 tokens, worst case
 CHUNK_SIZE_CHARS = int(os.getenv("CHUNK_SIZE_CHARS", "8000"))  # ~2,000 tokens/chunk, worst case
 CHUNK_DELAY_SECONDS = int(os.getenv("CHUNK_DELAY_SECONDS", "20"))
@@ -148,13 +135,10 @@ CHUNK_DELAY_SECONDS = int(os.getenv("CHUNK_DELAY_SECONDS", "20"))
 
 def _split_into_chunks(text: str, chunk_size: int = CHUNK_SIZE_CHARS) -> list[str]:
     """
-    Split text into pieces no larger than chunk_size characters.
-
-    This tries progressively finer separators: blank lines,
-    then single newlines, then sentence breaks. It only moves to the
-    next one if the current one fails to produce small enough pieces.
-    If nothing natural works, it hard-cuts by character count as a
-    last resort, so it should never silently fail to split.
+    Splits text into pieces no larger than chunk_size. Tries blank
+    lines, then newlines, then sentence breaks -- whichever gets
+    pieces small enough first. Hard-cuts by character count as a last
+    resort.
     """
     if len(text) <= chunk_size:
         return [text]
@@ -180,10 +164,8 @@ def _split_into_chunks(text: str, chunk_size: int = CHUNK_SIZE_CHARS) -> list[st
     if current:
         chunks.append(current)
 
-    # Safety net: if the separator search above never found one that
-    # worked (say, one giant unbroken line longer than chunk_size),
-    # hard-cut whatever is still oversized rather than returning it
-    # as is.
+    # Safety net: if no separator got everything small enough (one
+    # giant unbroken line, say), hard-cut what's left.
     final_chunks: list[str] = []
     for chunk in chunks:
         if len(chunk) <= chunk_size:
@@ -197,11 +179,9 @@ def _split_into_chunks(text: str, chunk_size: int = CHUNK_SIZE_CHARS) -> list[st
 
 def condense_if_needed(source_text: str, llm: LLM) -> str:
     """
-    If source_text is too large, it gets
-    split into chunks, each chunk condensed to its key points with its
-    own separate, much smaller LLM call, and the condensed pieces
-    joined into one short document. That gets passed
-    into the main Analyst/Writer pipeline.
+    If source_text is too big, splits it into chunks, condenses each
+    with its own small LLM call, and joins the results into one
+    shorter doc for the main pipeline.
     """
     if len(source_text) <= MAX_SAFE_CHARS:
         return source_text

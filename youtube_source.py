@@ -1,15 +1,11 @@
 """
-Extracts a plain-text transcript from a YouTube video URL, so the same
-transcript -> blog -> social pipeline works directly on a video link,
-not just pasted text or a local file.
+Pulls a plain-text transcript from a YouTube URL so the pipeline can
+run directly on a video, not just pasted text or a file.
 
-This uses youtube-transcript-api, which reads YouTube's public
-caption data directly and needs no API key. Google's official Data
-API can only fetch captions for videos you own via OAuth.
-Potential concerns:
-  - It can break if YouTube changes something internally.
-  - It doesn't work on videos with no captions at all (auto-generated
-    or manual). That's a real minority of videos, but not zero.
+Uses youtube-transcript-api (reads YouTube's public captions, no API
+key needed -- Google's official API only covers videos you own).
+Unofficial, so it can break if YouTube changes something, and it only
+works on videos that actually have captions.
 """
 import re
 
@@ -47,8 +43,7 @@ def get_transcript_from_youtube(url: str) -> str:
         try:
             fetched = ytt_api.fetch(video_id, languages=("en",))
         except NoTranscriptFound:
-            # No English transcript specifically, so this falls back
-            # to whatever language actually exists rather than giving up.
+            # No English transcript -- fall back to whatever language exists.
             transcript_list = ytt_api.list(video_id)
             first_available = next(iter(transcript_list))
             fetched = first_available.fetch()

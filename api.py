@@ -1,15 +1,13 @@
 """
-FastAPI wrapper around the content crew. 
-1. Serves a basic frontend for interactive use, and 
-2. exposes /generate as a plain HTTP POST so no-code automation tools 
-    (n8n, Zapier, Make) can trigger it too. 
-This is the piece an n8n "HTTP Request" node calls in n8n/workflow.json.
+FastAPI wrapper around the content crew -- serves a frontend, and
+exposes /generate as a plain POST so no-code tools (n8n, Zapier, Make)
+can call it too. This is what n8n/workflow.json's HTTP Request node hits.
 
-/generate accepts either pasted text OR a YouTube URL. Not both, not neither.
+/generate takes pasted text OR a YouTube URL, not both, not neither.
 
 Run locally:
     uvicorn api:app --reload
-Then open http://localhost:8000 in a browser.
+Then open http://localhost:8000.
 """
 from pathlib import Path
 
@@ -21,8 +19,8 @@ from dotenv import load_dotenv
 from agents import build_crew
 from youtube_source import get_transcript_from_youtube
 
-# Load parent .env if nested inside growth-intel-agent.
-# Load current .env as needed to override.
+# Load parent .env if nested inside growth-intel-agent, then this
+# project's own on top.
 parent_dir = Path(__file__).parent.parent
 if (parent_dir / "bridge.py").exists():
     load_dotenv(parent_dir / ".env")
@@ -67,7 +65,6 @@ def generate(req: GenerateRequest) -> GenerateResponse:
         try:
             source_text = get_transcript_from_youtube(req.youtube_url)
         except ValueError as e:
-            # ValueError passed from get_transcript_from_youtube
             raise HTTPException(status_code=400, detail=str(e))
     elif req.source_text:
         source_text = req.source_text
